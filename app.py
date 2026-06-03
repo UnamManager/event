@@ -4,17 +4,13 @@ import time
 import random
 import io
 
-# 1. 페이지 기본 설정 및 제목 잘림 방지 여백(CSS) 추가
+# 1. 페이지 기본 설정
 st.set_page_config(page_title="입주 후기 이벤트 실시간 추첨", page_icon="🎁", layout="centered")
 
-# [수정] 제목이 상단에 잘리지 않도록 위쪽 여백(margin-top)을 40픽셀 정도 넉넉히 주는 설정
-st.markdown("""
-    <style>
-    .block-container {
-        padding-top: 40px !important;
-    }
-    </style>
-""", unsafe_allow_url=True)
+# [수정] 에러를 유발하는 <style> 태그를 완전히 제거!
+# 대신 스트림릿 순정 '빈 줄 바꿈' 기능을 사용하여 상단 제목이 잘리지 않도록 공간을 넉넉히 확보합니다.
+st.markdown("#") 
+st.markdown("#") 
 
 st.title("🏢 입주 후기 이벤트 실시간 추첨 시스템")
 st.write("참관인 여러분 환영합니다! 공정하고 투명한 무작위 추첨을 진행합니다.")
@@ -98,13 +94,13 @@ if uploaded_file is not None:
             st.write("---")
             st.success(f"🎊 🎉 {selected_rank} 당첨자가 선발되었습니다! 순차적으로 공개합니다! 🎉 🎊")
             
-            # [수정] 풍선 터지는 효과를 인원수 루프 밖으로 빼서 처음에 딱 한번만 터지게 변경
+            # [수정 사항 반영] 풍선 효과는 리스트 출력 시작 전에 딱 '한 번만' 터집니다.
             st.balloons()
             
             # 스트림릿 내장 바둑판 레이아웃 설정
             cols = st.columns(min(target_count, 3))
             
-            # 리스트 변환 후 1.3초 딜레이 연출 적용 (풍선 효과 제거되어 깔끔함)
+            # 리스트 변환 후 1.3초 딜레이 연출 적용 (내부 풍선 효과 제거)
             winners_list = winners_pick.to_dict('records')
             for idx, row in enumerate(winners_list):
                 time.sleep(1.3) # 1.3초 긴장감 딜레이 유지
