@@ -4,8 +4,17 @@ import time
 import random
 import io
 
-# 1. 페이지 기본 설정
+# 1. 페이지 기본 설정 및 제목 잘림 방지 여백(CSS) 추가
 st.set_page_config(page_title="입주 후기 이벤트 실시간 추첨", page_icon="🎁", layout="centered")
+
+# [수정] 제목이 상단에 잘리지 않도록 위쪽 여백(margin-top)을 40픽셀 정도 넉넉히 주는 설정
+st.markdown("""
+    <style>
+    .block-container {
+        padding-top: 40px !important;
+    }
+    </style>
+""", unsafe_allow_url=True)
 
 st.title("🏢 입주 후기 이벤트 실시간 추첨 시스템")
 st.write("참관인 여러분 환영합니다! 공정하고 투명한 무작위 추첨을 진행합니다.")
@@ -69,7 +78,7 @@ if uploaded_file is not None:
         if len(df_pool) < target_count:
             st.error("잔여 추첨 대기 인원이 뽑으려는 당첨자 수보다 부족합니다!")
         else:
-            # [수정] 1. 셔플 애니메이션 연출 (오류 가능성을 줄이기 위해 횟수를 살짝 조절)
+            # 1. 셔플 애니메이션 연출
             status_text = st.empty()
             for i in range(12):
                 random_pick = df_pool.sample(n=1).iloc[0]
@@ -82,21 +91,23 @@ if uploaded_file is not None:
             winners_pick['등수'] = selected_rank
             winners_pick['상품명'] = target_prize
             
-            # [버그 해결 핵심] 화면 리프레시 없이 그 즉시 세션에 누적 저장
+            # 세션에 누적 저장
             st.session_state.all_winners = pd.concat([st.session_state.all_winners, winners_pick], ignore_index=True)
             
-            # 3. 당첨자 한 명씩 차례차례 화면에 쌓이면서 나타나는 순차 연출 영역
+            # 3. 당첨자 순차 연출 영역
             st.write("---")
             st.success(f"🎊 🎉 {selected_rank} 당첨자가 선발되었습니다! 순차적으로 공개합니다! 🎉 🎊")
+            
+            # [수정] 풍선 터지는 효과를 인원수 루프 밖으로 빼서 처음에 딱 한번만 터지게 변경
+            st.balloons()
             
             # 스트림릿 내장 바둑판 레이아웃 설정
             cols = st.columns(min(target_count, 3))
             
-            # 리스트 변환 후 딜레이 연출 적용
+            # 리스트 변환 후 1.3초 딜레이 연출 적용 (풍선 효과 제거되어 깔끔함)
             winners_list = winners_pick.to_dict('records')
             for idx, row in enumerate(winners_list):
-                time.sleep(1.3) # 형이 원했던 1.3초 긴장감 딜레이
-                st.balloons()   # 폭죽 효과
+                time.sleep(1.3) # 1.3초 긴장감 딜레이 유지
                 
                 # 순정 카드 컨테이너 출력
                 with cols[idx % 3]:
