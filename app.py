@@ -12,7 +12,7 @@ st.set_page_config(page_title="랜선 집들이 이벤트 추첨", page_icon="�
 st.markdown("#") 
 st.markdown("#") 
 
-st.title("🏢 입주 후기 이벤트 실시간 추첨 시스템")
+st.title("🏢 랜선 집들이 이벤트 추첨")
 st.write("참관인 여러분 환영합니다! 공정하고 투명한 무작위 추첨을 진행합니다.")
 
 # 경품 정보 안내판
