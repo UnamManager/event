@@ -5,7 +5,7 @@ import random
 import io
 
 # 1. 페이지 기본 설정 (에러 유발 CSS 스타일 제거)
-st.set_page_config(page_title="입주 후기 이벤트 실시간 추첨", page_icon="🎁", layout="centered")
+st.set_page_config(page_title="랜선 집들이 이벤트 추첨", page_icon="🎁", layout="centered")
 
 # 스트림릿 순정 기능인 Title과 Subheader로 깔끔하게 화면 구성
 st.title("🏢 입주 후기 이벤트 실시간 추첨 시스템")
