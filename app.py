@@ -5,7 +5,7 @@ import random
 import io
 
 # 1. 페이지 기본 설정
-st.set_page_config(page_title="입주 후기 이벤트 실시간 추첨", page_icon="🎁", layout="centered")
+st.set_page_config(page_title="랜선 집들이 이벤트 추첨", page_icon="🎁", layout="centered")
 
 # [수정] 에러를 유발하는 <style> 태그를 완전히 제거!
 # 대신 스트림릿 순정 '빈 줄 바꿈' 기능을 사용하여 상단 제목이 잘리지 않도록 공간을 넉넉히 확보합니다.
