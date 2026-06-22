@@ -4,11 +4,24 @@ import time
 import random
 import io
 
+# 이름 가운데 글자 블라인드(마스킹) 처리 함수
+def mask_name(name):
+    name = str(name).strip()
+    if len(name) <= 1:
+        return name
+    elif len(name) == 2:
+        return name[0] + "*"
+    elif len(name) == 3:
+        return name[0] + "*" + name[2]
+    else:
+        # 4글자 이상 (예: 독고영재 -> 독고**재)
+        mid_len = len(name) - 2
+        return name[0] + ("*" * mid_len) + name[-1]
+
 # 1. 페이지 기본 설정
 st.set_page_config(page_title="랜선 집들이 이벤트 추첨", page_icon="🎁", layout="centered")
 
-# [수정] 에러를 유발하는 <style> 태그를 완전히 제거!
-# 대신 스트림릿 순정 '빈 줄 바꿈' 기능을 사용하여 상단 제목이 잘리지 않도록 공간을 넉넉히 확보합니다.
+# 빈 줄 바꿈 기능으로 공간 확보
 st.markdown("#") 
 st.markdown("#") 
 
@@ -78,7 +91,8 @@ if uploaded_file is not None:
             status_text = st.empty()
             for i in range(12):
                 random_pick = df_pool.sample(n=1).iloc[0]
-                status_text.warning(f"🎲 시스템 무작위 추첨 매칭 중... ➡️ 당첨자 : {random_pick['신청자명']}님({random_pick['연락처_뒷자리']})")
+                masked_random_name = mask_name(random_pick['신청자명']) # 셔플 중에도 블라인드 처리
+                status_text.warning(f"🎲 시스템 무작위 추첨 매칭 중... ➡️ 당첨자 : {masked_random_name}님({random_pick['연락처_뒷자리']})")
                 time.sleep(0.08)
             status_text.empty() # 연출창 비우기
             
@@ -94,22 +108,24 @@ if uploaded_file is not None:
             st.write("---")
             st.success(f"🎊 🎉 {selected_rank} 당첨자가 선발되었습니다! 순차적으로 공개합니다! 🎉 🎊")
             
-            # [수정 사항 반영] 풍선 효과는 리스트 출력 시작 전에 딱 '한 번만' 터집니다.
             st.balloons()
             
             # 스트림릿 내장 바둑판 레이아웃 설정
             cols = st.columns(min(target_count, 3))
             
-            # 리스트 변환 후 1.3초 딜레이 연출 적용 (내부 풍선 효과 제거)
+            # 리스트 변환 후 1.3초 딜레이 연출 적용
             winners_list = winners_pick.to_dict('records')
             for idx, row in enumerate(winners_list):
                 time.sleep(1.3) # 1.3초 긴장감 딜레이 유지
+                
+                # [수정] 화면에 노출되는 당첨자 이름 블라인드 처리 적용
+                masked_winner_name = mask_name(row['신청자명'])
                 
                 # 순정 카드 컨테이너 출력
                 with cols[idx % 3]:
                     with st.container(border=True):
                         st.write(f"🏆 **{row['등수']} 당첨**")
-                        st.subheader(f"{row['신청자명']}님")
+                        st.subheader(f"{masked_winner_name}님") # 블라인드 이름 출력
                         st.write(f"({row['연락처_뒷자리']})")
 
     # 4. 실시간 통합 공식 전광판 (현재까지 누적된 모든 당첨자 명단)
@@ -123,6 +139,10 @@ if uploaded_file is not None:
         display_df = display_df.sort_values(by='sort_idx').drop(columns=['sort_idx'])
         
         display_table = display_df[['등수', '상품명', '신청자명', '연락처_뒷자리']].copy()
+        
+        # [수정] 전광판 표에 출력되는 성명 데이터도 블라인드 처리 적용
+        display_table['신청자명'] = display_table['신청자명'].apply(mask_name)
+        
         display_table.columns = ['등수', '당첨 경품', '성명', '휴대폰 뒷번호']
         st.dataframe(display_table, use_container_width=True, hide_index=True)
         
@@ -131,6 +151,7 @@ if uploaded_file is not None:
         st.subheader("💾 [관리자용] 최종 당첨자 원본 명단 다운로드")
         st.caption("참관인 방송 종료 후, 아래 버튼을 눌러 실제 성명, 연락처, 후기 URL 원본 리스트를 다운로드하세요.")
         
+        # 다운로드 데이터는 마스킹되지 않은 원래 대문자(원본 성명) 그대로 유지됩니다.
         raw_output = display_df[['등수', '상품명', '신청자명', '연락처', '게시글 URL']].copy()
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
