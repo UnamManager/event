@@ -14,7 +14,6 @@ def mask_name(name):
     elif len(name) == 3:
         return name[0] + "*" + name[2]
     else:
-        # 4글자 이상 (예: 독고영재 -> 독고**재)
         mid_len = len(name) - 2
         return name[0] + ("*" * mid_len) + name[-1]
 
@@ -49,15 +48,24 @@ prize_settings = {
     "1등": {"name": "LG전자 오브제컬렉션 워시콤보", "count": 1}
 }
 
-# 세션 상태 초기화 (누적 당첨자 보관용)
+# 세션 상태 초기화 (게시글 URL 컬럼이 확실히 존재하도록 명시)
 if "all_winners" not in st.session_state:
     st.session_state.all_winners = pd.DataFrame(columns=['등수', '상품명', '신청자명', '연락처', '게시글 URL', '연락처_뒷자리'])
 
 if uploaded_file is not None:
     # 엑셀 데이터 로드 및 중복 연락처 필터링
     df_raw = pd.read_excel(uploaded_file)
+    
+    # [수정] 엑셀 컬럼명의 앞뒤 공백 제거 (예: '게시글 URL ' -> '게시글 URL' 방지)
+    df_raw.columns = df_raw.columns.str.strip()
+    
+    # 필수 정보인 이름과 연락처가 있는 행만 남김 (URL은 빈 값이 있어도 에러 안 나게 유지)
     df_raw = df_raw.dropna(subset=['신청자명', '연락처'])
     df_raw = df_raw.drop_duplicates(subset=['연락처']) 
+    
+    # [수정] 업로드된 엑셀에 '게시글 URL' 컬럼이 아예 없는 경우 빈 컬럼으로 자동 생성하여 에러 방지
+    if '게시글 URL' not in df_raw.columns:
+        df_raw['게시글 URL'] = ""
     
     # 이름 전체 공개, 연락처 뒷 4자리 추출
     df_raw['연락처_뒷자리'] = df_raw['연락처'].apply(lambda x: str(x).replace('-', '').strip()[-4:] if len(str(x)) >= 4 else "0000")
@@ -91,18 +99,22 @@ if uploaded_file is not None:
             status_text = st.empty()
             for i in range(12):
                 random_pick = df_pool.sample(n=1).iloc[0]
-                masked_random_name = mask_name(random_pick['신청자명']) # 셔플 중에도 블라인드 처리
+                masked_random_name = mask_name(random_pick['신청자명'])
                 status_text.warning(f"🎲 시스템 무작위 추첨 매칭 중... ➡️ 당첨자 : {masked_random_name}님({random_pick['연락처_뒷자리']})")
                 time.sleep(0.08)
-            status_text.empty() # 연출창 비우기
+            status_text.empty()
             
             # 2. 진짜 무작위 추첨 진행
             winners_pick = df_pool.sample(n=target_count).copy()
             winners_pick['등수'] = selected_rank
             winners_pick['상품명'] = target_prize
             
+            # [핵심 수정] 추출한 샘플에서 '게시글 URL'을 포함한 모든 필요한 컬럼을 명확하게 유지하여 결합
+            required_cols = ['등수', '상품명', '신청자명', '연락처', '게시글 URL', '연락처_뒷자리']
+            winners_pick_filtered = winners_pick[required_cols]
+            
             # 세션에 누적 저장
-            st.session_state.all_winners = pd.concat([st.session_state.all_winners, winners_pick], ignore_index=True)
+            st.session_state.all_winners = pd.concat([st.session_state.all_winners, winners_pick_filtered], ignore_index=True)
             
             # 3. 당첨자 순차 연출 영역
             st.write("---")
@@ -110,22 +122,17 @@ if uploaded_file is not None:
             
             st.balloons()
             
-            # 스트림릿 내장 바둑판 레이아웃 설정
             cols = st.columns(min(target_count, 3))
             
-            # 리스트 변환 후 1.3초 딜레이 연출 적용
-            winners_list = winners_pick.to_dict('records')
+            winners_list = winners_pick_filtered.to_dict('records')
             for idx, row in enumerate(winners_list):
-                time.sleep(1.3) # 1.3초 긴장감 딜레이 유지
-                
-                # [수정] 화면에 노출되는 당첨자 이름 블라인드 처리 적용
+                time.sleep(1.3)
                 masked_winner_name = mask_name(row['신청자명'])
                 
-                # 순정 카드 컨테이너 출력
                 with cols[idx % 3]:
                     with st.container(border=True):
                         st.write(f"🏆 **{row['등수']} 당첨**")
-                        st.subheader(f"{masked_winner_name}님") # 블라인드 이름 출력
+                        st.subheader(f"{masked_winner_name}님")
                         st.write(f"({row['연락처_뒷자리']})")
 
     # 4. 실시간 통합 공식 전광판 (현재까지 누적된 모든 당첨자 명단)
@@ -139,10 +146,7 @@ if uploaded_file is not None:
         display_df = display_df.sort_values(by='sort_idx').drop(columns=['sort_idx'])
         
         display_table = display_df[['등수', '상품명', '신청자명', '연락처_뒷자리']].copy()
-        
-        # [수정] 전광판 표에 출력되는 성명 데이터도 블라인드 처리 적용
         display_table['신청자명'] = display_table['신청자명'].apply(mask_name)
-        
         display_table.columns = ['등수', '당첨 경품', '성명', '휴대폰 뒷번호']
         st.dataframe(display_table, use_container_width=True, hide_index=True)
         
@@ -151,8 +155,9 @@ if uploaded_file is not None:
         st.subheader("💾 [관리자용] 최종 당첨자 원본 명단 다운로드")
         st.caption("참관인 방송 종료 후, 아래 버튼을 눌러 실제 성명, 연락처, 후기 URL 원본 리스트를 다운로드하세요.")
         
-        # 다운로드 데이터는 마스킹되지 않은 원래 대문자(원본 성명) 그대로 유지됩니다.
+        # [확인] 원본으로 내보낼 컬럼 명확히 지정 및 정렬 보존
         raw_output = display_df[['등수', '상품명', '신청자명', '연락처', '게시글 URL']].copy()
+        
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             raw_output.to_excel(writer, index=False)
